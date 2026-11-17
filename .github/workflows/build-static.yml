@@ -1,0 +1,73 @@
+name: Build & Deploy Static Site
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Statik Derleme (Vite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Depoyu indir
+        uses: actions/checkout@v4
+
+      - name: Node.js kurulumu
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bağımlılıkları yükle
+        run: npm install
+
+      - name: Tip ve söz dizimi kontrolü
+        run: npm run lint
+
+      - name: Statik üretim derlemesi (dist)
+        run: |
+          npx vite build --base=./
+          touch dist/.nojekyll
+
+      - name: Derlenen statik dosyaları (dist) yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-dist
+          path: dist
+          retention-days: 30
+
+      - name: GitHub Pages paketini hazırla
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: GitHub Pages Yayını
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: GitHub Pages üzerine yayınla
+        id: deployment
+        uses: actions/deploy-pages@v4
