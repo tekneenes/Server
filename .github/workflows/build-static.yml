@@ -35,7 +35,7 @@ jobs:
           node-version: 22
 
       - name: Bağımlılıkları yükle
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Tip ve söz dizimi kontrolü
         run: npm run lint
@@ -51,6 +51,10 @@ jobs:
           name: static-dist
           path: dist
           retention-days: 30
+
+      - name: GitHub Pages yapılandır
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: actions/configure-pages@v5
 
       - name: GitHub Pages paketini hazırla
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
