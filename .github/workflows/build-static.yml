@@ -55,8 +55,6 @@ jobs:
       - name: GitHub Pages yapılandır
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: GitHub Pages paketini hazırla
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
