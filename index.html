@@ -1,185 +1,223 @@
 <!doctype html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tier-III Veri Merkezi 3D — İnteraktif Mimari & Kroki</title>
-    <meta
-      name="description"
-      content="Gerçek veri merkezi krokisine dayalı, dış şehir kampüsü ve gezilebilir detaylı iç mekanlarıyla interaktif Three.js 3D Veri Merkezi."
-    />
-    <meta property="og:title" content="Tier-III Veri Merkezi 3D" />
-    <meta
-      property="og:description"
-      content="Dış şehir kampüsü, Genel Kontrol Merkezi (NOC), Soğuk Koridor Sunucu Salonu, UPS ve Soğutma Tesisi ile gezilebilir 3D Veri Merkezi."
-    />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/src/styles.css" />
-  </head>
-  <body>
-    <div id="viewport-root">
-      <div id="webgl-mount" aria-label="3D Veri Merkezi Sahnesi"></div>
 
-      <!-- Üst Sol: Minimal Başlık ve Aktif Bölge Göstergesi -->
-      <header class="hud-top-left">
-        <div class="brand-row">
-          <h1 class="brand-title">Veri Merkezi Kampüsü · Tier III</h1>
-          <span class="brand-sep" aria-hidden="true">/</span>
-          <span id="current-zone-label" class="zone-label">Dış Kampüs</span>
-        </div>
-        <div class="hud-meta">
-          <span id="mode-readout">Serbest İnceleme</span>
-          <span aria-hidden="true">·</span>
-          <span id="inspect-hint">Detay için kabin veya ekipmana tıklayın</span>
-        </div>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tier-III Veri Merkezi 3D — İnteraktif Mimari & Kroki</title>
+  <meta name="description"
+    content="Gerçek veri merkezi krokisine dayalı, dış şehir kampüsü ve gezilebilir detaylı iç mekanlarıyla interaktif Three.js 3D Veri Merkezi." />
+  <meta property="og:title" content="Tier-III Veri Merkezi 3D" />
+  <meta property="og:description"
+    content="Dış şehir kampüsü, Genel Kontrol Merkezi (NOC), Soğuk Koridor Sunucu Salonu, UPS ve Soğutma Tesisi ile gezilebilir 3D Veri Merkezi." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230e141d'/%3E%3Cpath d='M16 18h32v8H16zm0 12h32v8H16zm0 12h32v8H16z' fill='%2338bdf8'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/build/three.module.js",
+          "three/addons/": "./vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+</head>
 
-      <!-- Üst Sağ: Sadece Kroki (Mini Harita) Aç/Kapat Düğmesi & Kompakt Kroki Kutusu -->
-      <aside class="hud-top-right">
-        <div class="kroki-header">
-          <span class="kroki-title">Kat Krokisi</span>
-          <button
-            id="btn-toggle-kroki"
-            type="button"
-            class="kroki-toggle-btn"
-            aria-expanded="true"
-            title="Kroki haritasını gizle veya göster (M)"
-          >
-            Gizle
-          </button>
-        </div>
-        <div id="kroki-body" class="kroki-body">
-          <canvas
-            id="kroki-canvas"
-            width="248"
-            height="196"
-            title="Odaya ışınlanmak için kroki üzerinde bir alana tıklayın"
-          ></canvas>
-          <div class="kroki-legend">
-            <span>Konum ve görüş açısı · Odaya gitmek için tıkla</span>
-          </div>
-        </div>
-      </aside>
+<body>
+  <div id="viewport-root">
+    <div id="webgl-mount" aria-label="3D Veri Merkezi Sahnesi"></div>
 
-      <!-- Seçili Ekipman Bilgi Şeridi (Dock üstünde kompakt, sadece seçim yapıldığında görünür) -->
-      <div id="inspector-bar" class="inspector-bar" hidden>
-        <div class="inspector-main">
-          <span id="inspector-category" class="inspector-cat">Ekipman</span>
-          <strong id="inspector-name" class="inspector-name">-</strong>
-          <span id="inspector-specs" class="inspector-specs">-</span>
-        </div>
-        <button id="btn-close-inspector" type="button" class="inspector-close" aria-label="Bilgiyi kapat">
-          ×
+    <!-- Açılış Anlatım Başlığı (İlk ekranda sol üstte animasyonla görünür, kaydırınca kaybolur) -->
+    <section id="hero-intro" class="hero-intro" aria-label="Giriş Başlığı">
+      <div class="hero-eyebrow">İNTERAKTİF 3D DENEYİM</div>
+      <h1 class="hero-title">Bir Veri Merkezi<br />Nasıl Çalışır?</h1>
+      <p class="hero-sub">
+        Kullandığımız uygulamaların, sitelerin ve bulut verilerinin 7/24 hiç kesilmeden nasıl çalıştığını binanın içine girerek keşfedin.
+      </p>
+      <div class="hero-scroll-cue">
+        <span class="hero-arrow" aria-hidden="true">↓</span>
+        <span>Gezmek için aşağı kaydırın</span>
+      </div>
+    </section>
+
+    <!-- Kaydırmalı Sahne Anlatım Kartı (Sadece sunum/tur modunda aktif sahneye göre konumlanır) -->
+    <aside id="story-overlay" class="story-overlay" data-pos="bottom-right" hidden aria-live="polite">
+      <div class="story-badge" id="story-badge">01 · GİRİŞ</div>
+      <h2 class="story-title" id="story-title">Veri Merkezi ve Tier III Nedir?</h2>
+      <div class="story-body" id="story-body"></div>
+      <div class="story-actions" id="story-actions" hidden></div>
+    </aside>
+
+    <!-- Ortam & Etkileşim Sesi Aç/Kapat Düğmesi -->
+    <button id="btn-toggle-audio" type="button" class="audio-toggle-btn" aria-pressed="true"
+      title="Oda ve ekipman ortam seslerini aç / kapat">
+      🔊 Ses Açık
+    </button>
+
+    <!-- Üst Sol: Minimal Başlık ve Aktif Bölge Göstergesi -->
+    <header class="hud-top-left">
+      <div class="brand-row">
+        <h1 class="brand-title">Veri Merkezi Kampüsü · Tier III</h1>
+        <span class="brand-sep" aria-hidden="true">/</span>
+        <span id="current-zone-label" class="zone-label">Dış Kampüs</span>
+      </div>
+      <div class="hud-meta">
+        <span id="mode-readout">Serbest İnceleme</span>
+        <span aria-hidden="true">·</span>
+        <span id="inspect-hint">Detay için kabin veya ekipmana tıklayın</span>
+      </div>
+    </header>
+
+    <!-- Üst Sağ: Sadece Kroki (Mini Harita) Aç/Kapat Düğmesi & Kompakt Kroki Kutusu -->
+    <aside class="hud-top-right">
+      <div class="kroki-header">
+        <span class="kroki-title">Kat Krokisi</span>
+        <button id="btn-toggle-kroki" type="button" class="kroki-toggle-btn" aria-expanded="true"
+          title="Kroki haritasını gizle veya göster (M)">
+          Gizle
         </button>
       </div>
-
-      <!-- Yürüyüş Modu Kontrol Rehberi & Nişangah -->
-      <div id="walk-reticle" class="walk-reticle" hidden aria-hidden="true"></div>
-      <div id="walk-hint" class="walk-hint" hidden>
-        <span><strong>WASD</strong> / Yön Tuşları: Yürü</span>
-        <span aria-hidden="true">·</span>
-        <span><strong>Fare Sürükle</strong> veya Tıkla: Bak</span>
-        <span aria-hidden="true">·</span>
-        <span><strong>Shift</strong>: Hızlı Yürü</span>
-        <span aria-hidden="true">·</span>
-        <span><strong>Esc</strong>: İmleci Serbest Bırak</span>
-      </div>
-
-      <!-- Mobil / Dokunmatik Yürüyüş Düğmeleri (yalnızca yürüyüş modunda ve dar ekranda görünür) -->
-      <div id="touch-dpad" class="touch-dpad" hidden>
-        <button type="button" data-move="forward" aria-label="İleri">▲</button>
-        <div class="touch-dpad-mid">
-          <button type="button" data-move="left" aria-label="Sola">◀</button>
-          <button type="button" data-move="back" aria-label="Geri">▼</button>
-          <button type="button" data-move="right" aria-label="Sağa">▶</button>
+      <div id="kroki-body" class="kroki-body">
+        <canvas id="kroki-canvas" width="248" height="196"
+          title="Odaya ışınlanmak için kroki üzerinde bir alana tıklayın"></canvas>
+        <div class="kroki-legend">
+          <span>Konum ve görüş açısı · Odaya gitmek için tıkla</span>
         </div>
       </div>
+    </aside>
 
-      <!-- Alt Merkez: Katlanabilir Tek Kontrol Dock'u -->
-      <div id="dock-wrapper" class="dock-wrapper">
-        <button
-          id="btn-collapse-dock"
-          type="button"
-          class="dock-collapse-tab"
-          aria-expanded="true"
-          title="Kontrol panelini gizle / göster (H)"
-        >
-          ▾ Kontrolleri Gizle
-        </button>
-        <nav id="control-dock" class="control-dock" aria-label="Sahne ve Kamera Kontrolleri">
-          <div class="dock-group" role="group" aria-label="Gezinme Modu">
-            <button id="btn-mode-orbit" type="button" class="dock-btn active" data-mode="orbit">
-              Serbest Kamera
-            </button>
-            <button id="btn-mode-walk" type="button" class="dock-btn" data-mode="walk">
-              İçinde Yürü (FPS)
-            </button>
-          </div>
-
-          <div class="dock-divider" aria-hidden="true"></div>
-
-          <div class="dock-group dock-presets" role="group" aria-label="Bölge Geçişleri">
-            <button type="button" class="dock-btn preset-btn active" data-preset="campus">
-              Dış Kampüs
-            </button>
-            <button type="button" class="dock-btn preset-btn" data-preset="lobby">
-              Giriş Lobisi
-            </button>
-            <button type="button" class="dock-btn preset-btn" data-preset="noc">
-              Kontrol Merkezi
-            </button>
-            <button type="button" class="dock-btn preset-btn" data-preset="server">
-              Sunucu Salonu
-            </button>
-            <button type="button" class="dock-btn preset-btn" data-preset="power">
-              Güç &amp; UPS
-            </button>
-            <button type="button" class="dock-btn preset-btn" data-preset="mech">
-              Soğutma Odası
-            </button>
-          </div>
-
-          <div class="dock-divider" aria-hidden="true"></div>
-
-          <div class="dock-group" role="group" aria-label="Görünüm Seçenekleri">
-            <button
-              id="btn-toggle-roof"
-              type="button"
-              class="dock-btn"
-              aria-pressed="false"
-              title="Çatıyı kaldırarak kroki kesitini görün (R)"
-            >
-              Çatı Kesiti
-            </button>
-            <button
-              id="btn-toggle-blueprint"
-              type="button"
-              class="dock-btn"
-              aria-pressed="false"
-              title="Üstten kroki görünümüne geç (K)"
-            >
-              Üstten Kroki
-            </button>
-          </div>
-        </nav>
+    <!-- Seçili Ekipman Bilgi Şeridi (Dock üstünde kompakt, sadece seçim yapıldığında görünür) -->
+    <div id="inspector-bar" class="inspector-bar" hidden>
+      <div class="inspector-main">
+        <span id="inspector-category" class="inspector-cat">Ekipman</span>
+        <strong id="inspector-name" class="inspector-name">-</strong>
+        <span id="inspector-specs" class="inspector-specs">-</span>
       </div>
+      <button id="btn-close-inspector" type="button" class="inspector-close" aria-label="Bilgiyi kapat">
+        ×
+      </button>
+    </div>
 
-      <!-- Yükleme / WebGL Hata Katmanı -->
-      <div id="webgl-fallback" class="webgl-fallback" hidden>
-        <div class="fallback-card">
-          <h2>3D Görünüm Başlatılamadı</h2>
-          <p>Tarayıcınızda WebGL desteği kapalı veya bağlam kesildi. Sayfayı yenileyerek tekrar deneyebilirsiniz.</p>
-        </div>
+    <!-- Yürüyüş Modu Kontrol Rehberi & Nişangah -->
+    <div id="walk-reticle" class="walk-reticle" hidden aria-hidden="true"></div>
+    <div id="walk-hint" class="walk-hint" hidden>
+      <span><strong>WASD</strong> / Yön Tuşları: Yürü</span>
+      <span aria-hidden="true">·</span>
+      <span><strong>Fare Sürükle</strong> veya Tıkla: Bak</span>
+      <span aria-hidden="true">·</span>
+      <span><strong>Shift</strong>: Hızlı Yürü</span>
+      <span aria-hidden="true">·</span>
+      <span><strong>Esc</strong>: İmleci Serbest Bırak</span>
+    </div>
+
+    <!-- Mobil / Dokunmatik Yürüyüş Düğmeleri (yalnızca yürüyüş modunda ve dar ekranda görünür) -->
+    <div id="touch-dpad" class="touch-dpad" hidden>
+      <button type="button" data-move="forward" aria-label="İleri">▲</button>
+      <div class="touch-dpad-mid">
+        <button type="button" data-move="left" aria-label="Sola">◀</button>
+        <button type="button" data-move="back" aria-label="Geri">▼</button>
+        <button type="button" data-move="right" aria-label="Sağa">▶</button>
       </div>
     </div>
 
-    <script type="module" src="/src/js/main.js"></script>
-  </body>
+    <!-- Rehberli Scroll Tur Anlatım Kartı (Yalnızca Rehberli Tur modunda görünür) -->
+    <aside id="tour-card" class="tour-card" aria-label="Rehberli Tur Anlatımı">
+      <div class="tour-card-top">
+        <span id="tour-stage-badge" class="tour-stage-badge">BÖLÜM 1 · KAMPÜS → GİRİŞ LOBİSİ</span>
+        <span id="tour-step-badge" class="tour-step-badge">1 / 11</span>
+      </div>
+      <h2 id="tour-title" class="tour-title">Tier-III Veri Merkezi Kampüsü</h2>
+      <p id="tour-desc" class="tour-desc">
+        Çift hatlı 34.5 kV enerji beslemesi, çevre güvenlik çiti, nizamiye ve ana veri merkezi binasına dış bakış.
+      </p>
+      <div class="tour-controls">
+        <button id="btn-tour-prev" type="button" class="tour-nav-btn" title="Önceki durak (↑)">‹ Önceki</button>
+        <input id="tour-range" class="tour-range" type="range" min="0" max="1000" value="0"
+          aria-label="Tur ilerleme çubuğu" />
+        <button id="btn-tour-next" type="button" class="tour-nav-btn" title="Sonraki durak (↓)">Sonraki ›</button>
+      </div>
+      <div class="tour-hint">Fare tekerleği (Scroll) veya ↑/↓ ok tuşlarıyla ilerleyin · İstediğiniz an Serbest/FPS moda geçebilirsiniz</div>
+    </aside>
+
+    <!-- Alt Merkez: Katlanabilir Tek Kontrol Dock'u -->
+    <div id="dock-wrapper" class="dock-wrapper">
+      <button id="btn-collapse-dock" type="button" class="dock-collapse-tab" aria-expanded="true"
+        title="Kontrol panelini gizle / göster (H)">
+        ▾ Kontrolleri Gizle
+      </button>
+      <nav id="control-dock" class="control-dock" aria-label="Sahne ve Kamera Kontrolleri">
+        <div class="dock-group" role="group" aria-label="Gezinme Modu">
+          <button id="btn-mode-tour" type="button" class="dock-btn active" data-mode="tour"
+            title="Fotoğraf açısından başlayarak fare tekerleği (scroll) ile rehberli gezi">
+            Rehberli Tur (Scroll)
+          </button>
+          <button id="btn-mode-orbit" type="button" class="dock-btn" data-mode="orbit">
+            Serbest Kamera
+          </button>
+          <button id="btn-mode-walk" type="button" class="dock-btn" data-mode="walk">
+            İçinde Yürü (FPS)
+          </button>
+        </div>
+
+        <div class="dock-divider" aria-hidden="true"></div>
+
+        <div class="dock-group dock-presets" role="group" aria-label="Bölge Geçişleri">
+          <button type="button" class="dock-btn preset-btn active" data-preset="campus">
+            Dış Kampüs
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="chiller">
+            Chiller Sahası
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="generator">
+            Jeneratör &amp; Trafo
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="lobby">
+            Giriş Lobisi
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="staging">
+            Güvenlik &amp; Staging
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="noc">
+            Kontrol Merkezi
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="server">
+            Sunucu Salonu
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="power">
+            Güç &amp; UPS
+          </button>
+          <button type="button" class="dock-btn preset-btn" data-preset="mech">
+            Soğutma Odası
+          </button>
+        </div>
+
+        <div class="dock-divider" aria-hidden="true"></div>
+
+        <div class="dock-group" role="group" aria-label="Görünüm Seçenekleri">
+          <button id="btn-toggle-roof" type="button" class="dock-btn" aria-pressed="false"
+            title="Çatıyı kaldırarak kroki kesitini görün (R)">
+            Çatı Kesiti
+          </button>
+          <button id="btn-toggle-blueprint" type="button" class="dock-btn" aria-pressed="false"
+            title="Üstten kroki görünümüne geç (K)">
+            Üstten Kroki
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Yükleme / WebGL Hata Katmanı -->
+    <div id="webgl-fallback" class="webgl-fallback" hidden>
+      <div class="fallback-card">
+        <h2>3D Görünüm Başlatılamadı</h2>
+        <p>Tarayıcınızda WebGL desteği kapalı veya bağlam kesildi. Sayfayı yenileyerek tekrar deneyebilirsiniz.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/js/main.js"></script>
+</body>
+
 </html>

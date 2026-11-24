@@ -5,7 +5,6 @@ import {
   createConcreteFacadeTexture,
   createAsphaltTexture,
   createGrassTexture,
-  createUpsPanelTexture,
   createNocFloorTexture,
 } from './textures.js';
 
@@ -15,7 +14,6 @@ export function createMaterials(isSoftwareGl = false) {
   const concreteTex = createConcreteFacadeTexture();
   const asphaltTex = createAsphaltTexture();
   const grassTex = createGrassTexture();
-  const upsTex = createUpsPanelTexture('UPS · N+1');
   const nocFloorTex = createNocFloorTexture();
 
   const materials = {
@@ -113,34 +111,34 @@ export function createMaterials(isSoftwareGl = false) {
       metalness: 0.08,
     }),
 
-    // Glass (software-safe transparency fallback)
+    // Crystal-clear architectural observation & curtain-wall glass (no blurry transmission pass)
     archGlass: isSoftwareGl
       ? new THREE.MeshStandardMaterial({
-          color: 0x93c5fd,
-          roughness: 0.1,
-          metalness: 0.25,
-          transparent: true,
-          opacity: 0.35,
-          depthWrite: false,
-        })
+        color: 0xdbeafe,
+        roughness: 0.08,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false,
+      })
       : new THREE.MeshPhysicalMaterial({
-          color: 0xbae6fd,
-          roughness: 0.06,
-          metalness: 0.05,
-          transmission: 0.78,
-          transparent: true,
-          opacity: 1,
-          ior: 1.5,
-          thickness: 0.18,
-          depthWrite: false,
-        }),
+        color: 0xdbeafe,
+        roughness: 0.04,
+        metalness: 0.06,
+        reflectivity: 0.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.03,
+        transparent: true,
+        opacity: 0.14,
+        depthWrite: false,
+      }),
 
     containmentGlass: new THREE.MeshStandardMaterial({
-      color: 0x7dd3fc,
-      roughness: 0.12,
-      metalness: 0.15,
+      color: 0xa5f3fc,
+      roughness: 0.06,
+      metalness: 0.12,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.16,
       depthWrite: false,
     }),
 
@@ -179,11 +177,6 @@ export function createMaterials(isSoftwareGl = false) {
       color: 0xe5eaf0,
       roughness: 0.42,
       metalness: 0.3,
-    }),
-    upsCabinet: new THREE.MeshStandardMaterial({
-      map: upsTex,
-      roughness: 0.4,
-      metalness: 0.55,
     }),
     pipeSupply: new THREE.MeshStandardMaterial({
       color: 0x0284c7,
@@ -235,7 +228,96 @@ export function createMaterials(isSoftwareGl = false) {
       emissiveIntensity: 1.8,
       roughness: 0.2,
     }),
+    invisibleHitMat: new THREE.MeshBasicMaterial({
+      visible: false,
+    }),
+    brassValve: new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      roughness: 0.28,
+      metalness: 0.88,
+    }),
+    hvCeramic: new THREE.MeshStandardMaterial({
+      color: 0x7c2d12,
+      roughness: 0.25,
+      metalness: 0.12,
+    }),
   };
 
   return materials;
 }
+
+export function createGeoPool() {
+  const boxes = new Map();
+  const cyls = new Map();
+  const planes = new Map();
+  const spheres = new Map();
+  const cones = new Map();
+  const toruses = new Map();
+
+  return {
+    box(w = 1, h = 1, d = 1, ws = 1, hs = 1, ds = 1) {
+      const k = `${w}|${h}|${d}|${ws}|${hs}|${ds}`;
+      let g = boxes.get(k);
+      if (!g) {
+        g = new THREE.BoxGeometry(w, h, d, ws, hs, ds);
+        boxes.set(k, g);
+      }
+      return g;
+    },
+    cyl(rt = 1, rb = 1, h = 1, seg = 32, hSeg = 1, open = false, ts = 0, tl = Math.PI * 2) {
+      const k = `${rt}|${rb}|${h}|${seg}|${hSeg}|${open ? 1 : 0}|${ts}|${tl}`;
+      let g = cyls.get(k);
+      if (!g) {
+        g = new THREE.CylinderGeometry(rt, rb, h, seg, hSeg, open, ts, tl);
+        cyls.set(k, g);
+      }
+      return g;
+    },
+    plane(w = 1, h = 1, ws = 1, hs = 1) {
+      const k = `${w}|${h}|${ws}|${hs}`;
+      let g = planes.get(k);
+      if (!g) {
+        g = new THREE.PlaneGeometry(w, h, ws, hs);
+        planes.set(k, g);
+      }
+      return g;
+    },
+    sphere(r = 1, ws = 12, hs = 8, ps = 0, pl = Math.PI * 2, ts = 0, tl = Math.PI) {
+      const k = `${r}|${ws}|${hs}|${ps}|${pl}|${ts}|${tl}`;
+      let g = spheres.get(k);
+      if (!g) {
+        g = new THREE.SphereGeometry(r, ws, hs, ps, pl, ts, tl);
+        spheres.set(k, g);
+      }
+      return g;
+    },
+    cone(r = 1, h = 1, seg = 10) {
+      const k = `${r}|${h}|${seg}`;
+      let g = cones.get(k);
+      if (!g) {
+        g = new THREE.ConeGeometry(r, h, seg);
+        cones.set(k, g);
+      }
+      return g;
+    },
+    torus(r = 1, tube = 0.2, rs = 8, ts = 16, arc = Math.PI * 2) {
+      const k = `${r}|${tube}|${rs}|${ts}|${arc}`;
+      let g = toruses.get(k);
+      if (!g) {
+        g = new THREE.TorusGeometry(r, tube, rs, ts, arc);
+        toruses.set(k, g);
+      }
+      return g;
+    },
+    clear() {
+      boxes.clear();
+      cyls.clear();
+      planes.clear();
+      spheres.clear();
+      cones.clear();
+      toruses.clear();
+    },
+  };
+}
+
+export const sharedGeoPool = createGeoPool();

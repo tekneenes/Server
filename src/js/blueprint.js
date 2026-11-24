@@ -7,6 +7,15 @@ const ROOMS = [
   { id: 'power', label: 'Güç & UPS Odası', x1: 9, x2: 18, z1: -13, z2: 13, fill: '#22211e', walkPos: [13.0, -3.5] },
 ];
 
+export function getZoneKeyAt(x, z) {
+  for (const r of ROOMS) {
+    if (x >= r.x1 && x <= r.x2 && z >= r.z1 && z <= r.z2) {
+      return r.id;
+    }
+  }
+  return null;
+}
+
 export function getZoneNameAt(x, z) {
   if (x >= -3.5 && x <= 2.8 && z >= -9.0 && z <= -6.8) return 'Soğuk Koridor A (Pod A)';
   if (x >= -3.5 && x <= 2.8 && z >= -2.0 && z <= 0.2) return 'Soğuk Koridor B (Pod B)';
@@ -52,6 +61,14 @@ export function createBlueprintController(canvas, onTeleport) {
         onTeleport(r.walkPos[0], r.walkPos[1], r.id);
         return;
       }
+    }
+    if (wx >= -16 && wx <= 0 && wz >= -21 && wz <= -14) {
+      onTeleport(wx, wz, 'chiller');
+      return;
+    }
+    if (wx >= 20 && wx <= 27 && wz >= -11 && wz <= 6) {
+      onTeleport(wx, wz, 'generator');
+      return;
     }
     onTeleport(wx, wz, 'campus');
   });
@@ -104,6 +121,16 @@ export function createBlueprintController(canvas, onTeleport) {
       }
     }
 
+    // Draw Edge & Core Network 3-rack group along South-East wall of Server Hall (x=8.15)
+    for (const [nz, nCol] of [
+      [-0.1, '#38bdf8'],
+      [1.0, '#f97316'],
+      [2.1, '#22d3ee'],
+    ]) {
+      ctx.fillStyle = nCol;
+      ctx.fillRect(toCanvasX(7.65), toCanvasY(nz - 0.44), Math.max(3, toCanvasX(8.65) - toCanvasX(7.65)), Math.max(3, toCanvasY(nz + 0.44) - toCanvasY(nz - 0.44)));
+    }
+
     // Draw NOC-IDF-01 Switch Cabinet & 4 NOC Operator Consoles
     ctx.fillStyle = '#38bdf8';
     ctx.fillRect(toCanvasX(-8.8), toCanvasY(-4.85), Math.max(3, toCanvasX(-7.9) - toCanvasX(-8.8)), Math.max(3, toCanvasY(-3.85) - toCanvasY(-4.85)));
@@ -117,13 +144,21 @@ export function createBlueprintController(canvas, onTeleport) {
       ctx.fillRect(toCanvasX(cx - 0.45), toCanvasY(cz - 1.1), Math.max(2, toCanvasX(cx + 0.45) - toCanvasX(cx - 0.45)), Math.max(4, toCanvasY(cz + 1.1) - toCanvasY(cz - 1.1)));
     }
 
-    // Draw Security & Staging cabinets (SEC-NVR-01, TST-01), X-Ray & ESD Workbench
+    // Draw Security & Staging divider wall (x = 2.55, doorway z = 8..10.2) + SEC-NVR-01, TST-01, X-Ray & ESD Workbench
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(toCanvasX(2.55), toCanvasY(5.0));
+    ctx.lineTo(toCanvasX(2.55), toCanvasY(8.0));
+    ctx.moveTo(toCanvasX(2.55), toCanvasY(10.2));
+    ctx.lineTo(toCanvasX(2.55), toCanvasY(13.0));
+    ctx.stroke();
     ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(toCanvasX(-4.3), toCanvasY(10.8), 4, 4);
+    ctx.fillRect(toCanvasX(3.0), toCanvasY(5.3), 4, 4);
     ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(toCanvasX(6.0), toCanvasY(10.8), 4, 4);
+    ctx.fillRect(toCanvasX(7.0), toCanvasY(10.8), 4, 4);
     ctx.fillStyle = '#64748b';
-    ctx.fillRect(toCanvasX(1.9), toCanvasY(10.9), Math.max(6, toCanvasX(4.9) - toCanvasX(1.9)), 4);
+    ctx.fillRect(toCanvasX(3.0), toCanvasY(10.9), Math.max(6, toCanvasX(6.1) - toCanvasX(3.0)), 4);
     ctx.fillRect(toCanvasX(-3.3), toCanvasY(5.8), Math.max(5, toCanvasX(-1.1) - toCanvasX(-3.3)), 4);
 
     // Draw Lobby: Reception desk, entrance mat, waiting lounge & centered turnstiles
@@ -188,6 +223,7 @@ export function createBlueprintController(canvas, onTeleport) {
       [-7, -9],
       [9, -3.9],
       [9, 9.1],
+      [17.82, 9.8],
     ];
     doors.forEach(([dx, dz]) => {
       ctx.fillRect(toCanvasX(dx) - 2, toCanvasY(dz) - 2, 4, 4);

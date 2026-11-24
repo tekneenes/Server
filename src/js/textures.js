@@ -1,9 +1,23 @@
 import * as THREE from 'three';
 
 let maxAnisotropy = 4;
+const textureCache = new Map();
 
 export function setMaxAnisotropy(value) {
-  maxAnisotropy = Math.max(1, value || 1);
+  maxAnisotropy = Math.min(4, Math.max(1, value || 1));
+}
+
+function getCachedTexture(key, builder) {
+  const cached = textureCache.get(key);
+  if (cached) return cached;
+  const tex = builder();
+  textureCache.set(key, tex);
+  return tex;
+}
+
+export function clearTextureCache() {
+  textureCache.forEach((tex) => tex.dispose());
+  textureCache.clear();
 }
 
 function finalizeTexture(canvas, { srgb = true, repeatX = 1, repeatY = 1 } = {}) {
@@ -267,65 +281,69 @@ export function createServerRackFrontTexture(rackNumber = 1, variant = 0) {
 }
 
 export function createCityFacadeTexture(tintHex = '#64748b', windowGlow = '#93c5fd') {
-  const w = 256;
-  const h = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
+  return getCachedTexture(`city:${tintHex}:${windowGlow}`, () => {
+    const w = 256;
+    const h = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = tintHex;
-  ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = tintHex;
+    ctx.fillRect(0, 0, w, h);
 
-  const cols = 6;
-  const rows = 14;
-  const padX = 10;
-  const padY = 12;
-  const cellW = (w - padX * 2) / cols;
-  const cellH = (h - padY * 2) / rows;
+    const cols = 6;
+    const rows = 14;
+    const padX = 10;
+    const padY = 12;
+    const cellW = (w - padX * 2) / cols;
+    const cellH = (h - padY * 2) / rows;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const wx = padX + c * cellW + 4;
-      const wy = padY + r * cellH + 5;
-      const lit = (r * 7 + c * 11) % 5 === 0;
-      ctx.fillStyle = lit ? windowGlow : '#1e293b';
-      ctx.fillRect(wx, wy, cellW - 8, cellH - 10);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const wx = padX + c * cellW + 4;
+        const wy = padY + r * cellH + 5;
+        const lit = (r * 7 + c * 11) % 5 === 0;
+        ctx.fillStyle = lit ? windowGlow : '#1e293b';
+        ctx.fillRect(wx, wy, cellW - 8, cellH - 10);
 
-      // Mullion highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(wx, wy, cellW - 8, 2);
+        // Mullion highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(wx, wy, cellW - 8, 2);
+      }
     }
-  }
 
-  return finalizeTexture(canvas, { srgb: true, repeatX: 1, repeatY: 1 });
+    return finalizeTexture(canvas, { srgb: true, repeatX: 1, repeatY: 1 });
+  });
 }
 
 export function createSignTexture(title, subtitle, accentColor = '#38bdf8') {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
+  return getCachedTexture(`sign:${title}|${subtitle}|${accentColor}`, () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 512, 128);
 
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(4, 4, 504, 120);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 504, 120);
 
-  ctx.fillStyle = accentColor;
-  ctx.fillRect(18, 22, 8, 84);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(18, 22, 8, 84);
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 30px sans-serif';
-  ctx.fillText(title, 42, 60);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(title, 42, 60);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '20px monospace';
-  ctx.fillText(subtitle, 42, 95);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '20px monospace';
+    ctx.fillText(subtitle, 42, 95);
 
-  return finalizeTexture(canvas, { srgb: true });
+    return finalizeTexture(canvas, { srgb: true });
+  });
 }
 
 export function createUpsPanelTexture(label = 'UPS-01 · 500 kVA') {
@@ -414,144 +432,164 @@ export function createNocWallScreenManager() {
   canvas.height = 448;
   const ctx = canvas.getContext('2d');
 
+  // Pre-render all static frames, titles, labels & CCTV boxes once to avoid full-canvas redraws every 0.5s
+  const staticCanvas = document.createElement('canvas');
+  staticCanvas.width = 1536;
+  staticCanvas.height = 448;
+  const sctx = staticCanvas.getContext('2d');
+
+  const panels = [
+    { x: 14, w: 364, title: 'SOĞUTMA & PUE İZLEME', accent: '#38bdf8' },
+    { x: 394, w: 374, title: 'SUNUCU SALONU TOPOLOJİ', accent: '#10b981' },
+    { x: 784, w: 364, title: 'GÜÇ DAĞILIM & UPS', accent: '#4ade80' },
+    { x: 1164, w: 358, title: 'GÜVENLİK · CCTV · VESDA', accent: '#f59e0b' },
+  ];
+
+  sctx.fillStyle = '#060c15';
+  sctx.fillRect(0, 0, 1536, 448);
+
+  panels.forEach((p, idx) => {
+    sctx.fillStyle = '#0d1626';
+    sctx.fillRect(p.x, 14, p.w, 420);
+    sctx.strokeStyle = '#1e293b';
+    sctx.lineWidth = 2;
+    sctx.strokeRect(p.x, 14, p.w, 420);
+
+    sctx.fillStyle = '#162235';
+    sctx.fillRect(p.x, 14, p.w, 38);
+    sctx.fillStyle = p.accent;
+    sctx.fillRect(p.x, 14, 6, 38);
+    sctx.fillStyle = '#f1f5f9';
+    sctx.font = 'bold 16px monospace';
+    sctx.fillText(p.title, p.x + 16, 39);
+
+    if (idx === 0) {
+      sctx.fillStyle = '#94a3b8';
+      sctx.font = '15px monospace';
+      sctx.fillText('SOĞUK KORİDOR A : 20.4°C', p.x + 20, 150);
+      sctx.fillText('SOĞUK KORİDOR B : 20.8°C', p.x + 20, 178);
+      sctx.fillText('SICAK KORİDOR   : 33.2°C', p.x + 20, 206);
+      sctx.fillText('CHILLER #1-#3   : AKTİF (%68)', p.x + 20, 234);
+
+      sctx.fillStyle = '#09111e';
+      sctx.fillRect(p.x + 18, 258, 326, 154);
+      sctx.strokeStyle = '#1e293b';
+      sctx.strokeRect(p.x + 18, 258, 326, 154);
+    } else if (idx === 1) {
+      sctx.fillStyle = '#94a3b8';
+      sctx.font = '14px monospace';
+      sctx.fillText('24 KABİN + NOC-IDF-01 · ÇEVRİMİÇİ', p.x + 18, 82);
+    } else if (idx === 2) {
+      sctx.fillStyle = '#4ade80';
+      sctx.font = 'bold 38px monospace';
+      sctx.fillText('1.42 MW', p.x + 20, 106);
+      sctx.fillStyle = '#94a3b8';
+      sctx.font = '15px monospace';
+      sctx.fillText('UPS-01..03 : NORMAL (N+1)', p.x + 20, 146);
+      sctx.fillText('AKÜ OTONOMİ: 15 DK · %100', p.x + 20, 174);
+      sctx.fillText('JENERATÖR  : HAZIR BEKLEME', p.x + 20, 202);
+
+      const barLabels = ['FEED A', 'FEED B', 'CHILLER', 'UPS BUS'];
+      barLabels.forEach((label, bi) => {
+        const by = 236 + bi * 44;
+        sctx.fillStyle = '#cbd5e1';
+        sctx.font = '12px monospace';
+        sctx.fillText(label, p.x + 20, by + 16);
+      });
+    } else {
+      sctx.fillStyle = '#4ade80';
+      sctx.font = 'bold 18px monospace';
+      sctx.fillText('VESDA ERKEN ALGILAMA: TEMİZ', p.x + 18, 86);
+      sctx.fillStyle = '#38bdf8';
+      sctx.font = '14px monospace';
+      sctx.fillText('FM-200: 42 BAR · MANTRAP KİLİTLİ', p.x + 18, 114);
+
+      const cams = ['CAM-01 GİRİŞ', 'CAM-02 KORİDOR A', 'CAM-03 KORİDOR B', 'CAM-04 UPS'];
+      cams.forEach((cam, ci) => {
+        const cx = p.x + 18 + (ci % 2) * 164;
+        const cy = 136 + Math.floor(ci / 2) * 116;
+        sctx.fillStyle = '#09111d';
+        sctx.fillRect(cx, cy, 154, 102);
+        sctx.strokeStyle = '#334155';
+        sctx.strokeRect(cx, cy, 154, 102);
+        sctx.strokeStyle = '#1e3a5f';
+        sctx.strokeRect(cx + 18, cy + 28, 118, 56);
+        sctx.fillStyle = '#22c55e';
+        sctx.fillRect(cx + 8, cy + 10, 7, 7);
+        sctx.fillStyle = '#cbd5e1';
+        sctx.font = '11px monospace';
+        sctx.fillText(cam, cx + 20, cy + 18);
+      });
+
+      sctx.fillStyle = '#0f172a';
+      sctx.fillRect(p.x + 18, 378, 320, 40);
+      sctx.fillStyle = '#4ade80';
+      sctx.font = 'bold 14px monospace';
+      sctx.fillText('AKTİF KRİTİK ALARM: 0  ·  SLA %99.995', p.x + 28, 403);
+    }
+  });
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = maxAnisotropy;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  const dynBars = [
+    { val: 0.68, col: '#ef4444' },
+    { val: 0.72, col: '#3b82f6' },
+    { val: 0.61, col: '#38bdf8' },
+    { val: 0.66, col: '#22c55e' },
+  ];
 
   function draw(phase = 0) {
-    ctx.fillStyle = '#060c15';
-    ctx.fillRect(0, 0, 1536, 448);
+    ctx.drawImage(staticCanvas, 0, 0);
 
-    const panels = [
-      { x: 14, w: 364, title: 'SOĞUTMA & PUE İZLEME', accent: '#38bdf8' },
-      { x: 394, w: 374, title: 'SUNUCU SALONU TOPOLOJİ', accent: '#10b981' },
-      { x: 784, w: 364, title: 'GÜÇ DAĞILIM & UPS', accent: '#4ade80' },
-      { x: 1164, w: 358, title: 'GÜVENLİK · CCTV · VESDA', accent: '#f59e0b' },
-    ];
+    // Panel 0 dynamic PUE readout + live airflow trend
+    const p0x = panels[0].x;
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 42px monospace';
+    const pue = (1.23 + Math.sin(phase * 0.4) * 0.01).toFixed(2);
+    ctx.fillText(`PUE ${pue}`, p0x + 20, 108);
 
-    panels.forEach((p, idx) => {
-      ctx.fillStyle = '#0d1626';
-      ctx.fillRect(p.x, 14, p.w, 420);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(p.x, 14, p.w, 420);
+    ctx.strokeStyle = '#0ea5e9';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let gx = 0; gx < 310; gx += 6) {
+      const gy = 336 + Math.sin(gx * 0.04 + phase * 1.5) * 32 + Math.cos(gx * 0.09) * 12;
+      if (gx === 0) ctx.moveTo(p0x + 26 + gx, gy);
+      else ctx.lineTo(p0x + 26 + gx, gy);
+    }
+    ctx.stroke();
 
-      ctx.fillStyle = '#162235';
-      ctx.fillRect(p.x, 14, p.w, 38);
-      ctx.fillStyle = p.accent;
-      ctx.fillRect(p.x, 14, 6, 38);
-      ctx.fillStyle = '#f1f5f9';
-      ctx.font = 'bold 16px monospace';
-      ctx.fillText(p.title, p.x + 16, 39);
-
-      if (idx === 0) {
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 42px monospace';
-        const pue = (1.23 + Math.sin(phase * 0.4) * 0.01).toFixed(2);
-        ctx.fillText(`PUE ${pue}`, p.x + 20, 108);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '15px monospace';
-        ctx.fillText('SOĞUK KORİDOR A : 20.4°C', p.x + 20, 150);
-        ctx.fillText('SOĞUK KORİDOR B : 20.8°C', p.x + 20, 178);
-        ctx.fillText('SICAK KORİDOR   : 33.2°C', p.x + 20, 206);
-        ctx.fillText('CHILLER #1-#3   : AKTİF (%68)', p.x + 20, 234);
-
-        // Live airflow / thermal trend chart
-        ctx.fillStyle = '#09111e';
-        ctx.fillRect(p.x + 18, 258, 326, 154);
-        ctx.strokeStyle = '#1e293b';
-        ctx.strokeRect(p.x + 18, 258, 326, 154);
-
-        ctx.strokeStyle = '#0ea5e9';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        for (let gx = 0; gx < 310; gx += 6) {
-          const gy = 336 + Math.sin(gx * 0.04 + phase * 1.5) * 32 + Math.cos(gx * 0.09) * 12;
-          if (gx === 0) ctx.moveTo(p.x + 26 + gx, gy);
-          else ctx.lineTo(p.x + 26 + gx, gy);
-        }
-        ctx.stroke();
-      } else if (idx === 1) {
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '14px monospace';
-        ctx.fillText('24 KABİN + NOC-IDF-01 · ÇEVRİMİÇİ', p.x + 18, 82);
-
-        for (let row = 0; row < 4; row++) {
-          for (let col = 0; col < 6; col++) {
-            const rx = p.x + 22 + col * 56;
-            const ry = 104 + row * 74;
-            const load = 0.55 + 0.35 * Math.sin(phase * 0.8 + row * 1.7 + col * 0.9);
-            ctx.fillStyle = col === 0 ? '#0284c7' : col === 5 ? '#d97706' : load > 0.84 ? '#0ea5e9' : '#10b981';
-            ctx.fillRect(rx, ry, 46, 56);
-            ctx.fillStyle = '#0b1120';
-            ctx.fillRect(rx + 5, ry + 7, 36, 14);
-            ctx.fillStyle = '#f8fafc';
-            ctx.font = 'bold 11px monospace';
-            ctx.fillText(`R${row * 6 + col + 1}`, rx + 10, ry + 42);
-          }
-        }
-      } else if (idx === 2) {
-        ctx.fillStyle = '#4ade80';
-        ctx.font = 'bold 38px monospace';
-        ctx.fillText('1.42 MW', p.x + 20, 106);
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '15px monospace';
-        ctx.fillText('UPS-01..03 : NORMAL (N+1)', p.x + 20, 146);
-        ctx.fillText('AKÜ OTONOMİ: 15 DK · %100', p.x + 20, 174);
-        ctx.fillText('JENERATÖR  : HAZIR BEKLEME', p.x + 20, 202);
-
-        const bars = [
-          { label: 'FEED A', val: 0.68, col: '#ef4444' },
-          { label: 'FEED B', val: 0.72, col: '#3b82f6' },
-          { label: 'CHILLER', val: 0.61, col: '#38bdf8' },
-          { label: 'UPS BUS', val: 0.66, col: '#22c55e' },
-        ];
-        bars.forEach((b, bi) => {
-          const by = 236 + bi * 44;
-          ctx.fillStyle = '#cbd5e1';
-          ctx.font = '12px monospace';
-          ctx.fillText(b.label, p.x + 20, by + 16);
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(p.x + 88, by, 254, 22);
-          ctx.fillStyle = b.col;
-          const jitter = Math.sin(phase + bi) * 0.03;
-          ctx.fillRect(p.x + 88, by, Math.round(254 * (b.val + jitter)), 22);
-        });
-      } else {
-        // Security, CCTV & VESDA panel
-        ctx.fillStyle = '#4ade80';
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText('VESDA ERKEN ALGILAMA: TEMİZ', p.x + 18, 86);
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = '14px monospace';
-        ctx.fillText('FM-200: 42 BAR · MANTRAP KİLİTLİ', p.x + 18, 114);
-
-        const cams = ['CAM-01 GİRİŞ', 'CAM-02 KORİDOR A', 'CAM-03 KORİDOR B', 'CAM-04 UPS'];
-        cams.forEach((cam, ci) => {
-          const cx = p.x + 18 + (ci % 2) * 164;
-          const cy = 136 + Math.floor(ci / 2) * 116;
-          ctx.fillStyle = '#09111d';
-          ctx.fillRect(cx, cy, 154, 102);
-          ctx.strokeStyle = '#334155';
-          ctx.strokeRect(cx, cy, 154, 102);
-          // Schematic wireframe cam view
-          ctx.strokeStyle = '#1e3a5f';
-          ctx.strokeRect(cx + 18, cy + 28, 118, 56);
-          ctx.fillStyle = '#22c55e';
-          ctx.fillRect(cx + 8, cy + 10, 7, 7);
-          ctx.fillStyle = '#cbd5e1';
-          ctx.font = '11px monospace';
-          ctx.fillText(cam, cx + 20, cy + 18);
-        });
-
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(p.x + 18, 378, 320, 40);
-        ctx.fillStyle = '#4ade80';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillText('AKTİF KRİTİK ALARM: 0  ·  SLA %99.995', p.x + 28, 403);
+    // Panel 1 dynamic rack load grid
+    const p1x = panels[1].x;
+    ctx.font = 'bold 11px monospace';
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 6; col++) {
+        const rx = p1x + 22 + col * 56;
+        const ry = 104 + row * 74;
+        const load = 0.55 + 0.35 * Math.sin(phase * 0.8 + row * 1.7 + col * 0.9);
+        ctx.fillStyle = col === 0 ? '#0284c7' : col === 5 ? '#d97706' : load > 0.84 ? '#0ea5e9' : '#10b981';
+        ctx.fillRect(rx, ry, 46, 56);
+        ctx.fillStyle = '#0b1120';
+        ctx.fillRect(rx + 5, ry + 7, 36, 14);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`R${row * 6 + col + 1}`, rx + 10, ry + 42);
       }
-    });
+    }
+
+    // Panel 2 dynamic load bars
+    const p2x = panels[2].x;
+    for (let bi = 0; bi < dynBars.length; bi++) {
+      const b = dynBars[bi];
+      const by = 236 + bi * 44;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(p2x + 88, by, 254, 22);
+      ctx.fillStyle = b.col;
+      const jitter = Math.sin(phase + bi) * 0.03;
+      ctx.fillRect(p2x + 88, by, Math.round(254 * (b.val + jitter)), 22);
+    }
 
     texture.needsUpdate = true;
   }
@@ -697,27 +735,29 @@ export function createFireControlPanelTexture() {
 }
 
 export function createHazardStripeTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
+  return getCachedTexture('hazardStripe', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 256, 256);
 
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 22;
-  for (let i = -256; i < 512; i += 52) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i + 256, 256);
-    ctx.stroke();
-  }
+    ctx.strokeStyle = '#eab308';
+    ctx.lineWidth = 22;
+    for (let i = -256; i < 512; i += 52) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + 256, 256);
+      ctx.stroke();
+    }
 
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(24, 24, 208, 208);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(24, 24, 208, 208);
 
-  return finalizeTexture(canvas, { srgb: true });
+    return finalizeTexture(canvas, { srgb: true });
+  });
 }
 
 export function createNocFloorTexture() {
@@ -1325,6 +1365,114 @@ export function createSecurityControlTexture() {
   return finalizeTexture(canvas, { srgb: true });
 }
 
+export function createXrayScanTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 320;
+  const ctx = canvas.getContext('2d');
+
+  // Deep diagnostic slate frame
+  ctx.fillStyle = '#050b14';
+  ctx.fillRect(0, 0, 512, 320);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(4, 4, 504, 312);
+
+  // Header bar
+  ctx.fillStyle = '#0f1c2e';
+  ctx.fillRect(10, 10, 492, 36);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(10, 10, 8, 36);
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('X-RAY TARAMA · ÇİFT ENERJİ (140 kV)', 26, 33);
+
+  // Main X-Ray viewport (false-color material penetration scan)
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(16, 56, 336, 210);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(16, 56, 336, 210);
+
+  // Faint calibration grid inside X-Ray viewport
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+  ctx.lineWidth = 1;
+  for (let gx = 48; gx < 350; gx += 32) {
+    ctx.beginPath();
+    ctx.moveTo(gx, 56);
+    ctx.lineTo(gx, 266);
+    ctx.stroke();
+  }
+  for (let gy = 88; gy < 264; gy += 32) {
+    ctx.beginPath();
+    ctx.moveTo(16, gy);
+    ctx.lineTo(352, gy);
+    ctx.stroke();
+  }
+
+  // Case silhouette (Orange = organic/polymer shell, Blue = high-density metal, Green = alloy/PCB)
+  ctx.fillStyle = 'rgba(249, 115, 22, 0.55)';
+  ctx.fillRect(46, 86, 276, 152);
+  ctx.strokeStyle = '#ea580c';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(46, 86, 276, 152);
+
+  // Laptop / Server Chassis metallic components (deep blue & green X-ray tones)
+  ctx.fillStyle = 'rgba(37, 99, 235, 0.78)';
+  ctx.fillRect(68, 106, 128, 110);
+  ctx.fillStyle = 'rgba(22, 163, 74, 0.75)';
+  ctx.fillRect(84, 118, 96, 58);
+  // CPU Heatsink fins (dense dark blue)
+  ctx.fillStyle = '#1e3a8a';
+  for (let fx = 90; fx < 174; fx += 10) {
+    ctx.fillRect(fx, 124, 5, 42);
+  }
+  // Power brick & braided cables (blue & orange)
+  ctx.fillStyle = 'rgba(30, 58, 138, 0.85)';
+  ctx.fillRect(218, 112, 74, 48);
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(196, 196);
+  ctx.bezierCurveTo(228, 220, 260, 170, 294, 192);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(22, 163, 74, 0.8)';
+  ctx.fillRect(222, 174, 68, 42);
+
+  // Right Diagnostic Telemetry Column
+  ctx.fillStyle = '#0c1626';
+  ctx.fillRect(362, 56, 134, 210);
+  ctx.strokeStyle = '#334155';
+  ctx.strokeRect(362, 56, 134, 210);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('MOD: OTO-TEHDİT', 372, 82);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '11px monospace';
+  ctx.fillText('ORGANİK : TURUNCU', 372, 112);
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText('ALAŞIM  : YEŞİL', 372, 134);
+  ctx.fillStyle = '#60a5fa';
+  ctx.fillText('METAL   : MAVİ', 372, 156);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(372, 178, 114, 72);
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('NESNE: KASA', 380, 204);
+  ctx.fillText('TEHDİT: YOK', 380, 228);
+
+  // Bottom Safe Clearance Status Strip
+  ctx.fillStyle = '#14532d';
+  ctx.fillRect(16, 276, 480, 28);
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('TARAMA TAMAMLANDI · GEÇİŞ ONAYLI (0 ALARM)', 62, 295);
+
+  return finalizeTexture(canvas, { srgb: true });
+}
+
 export function createLogisticsBoxTexture(title = 'SUNUCU DONANIM', code = '2U CHASSIS') {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -1842,4 +1990,193 @@ export function createReceptionMonitorTexture(variant = 0) {
   }
 
   return finalizeTexture(canvas, { srgb: true });
+}
+
+
+export function createOdfPanelTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 768;
+  const ctx = canvas.getContext('2d');
+
+  // Matte powder-coated industrial steel door surface
+  ctx.fillStyle = '#18202c';
+  ctx.fillRect(0, 0, 512, 768);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(5, 5, 502, 758);
+
+  // Subtle recessed door bevel frame
+  ctx.strokeStyle = '#0b111a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(18, 18, 476, 732);
+
+  // Upper Identification Placard
+  ctx.fillStyle = '#0b1320';
+  ctx.fillRect(32, 36, 448, 114);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(32, 36, 448, 114);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(32, 36, 10, 114);
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 30px sans-serif';
+  ctx.fillText('FİBER OMURGA PANOSU', 56, 84);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('MMR-ODF-01 · MEET-ME GİRİŞİ', 56, 122);
+
+  // Upper Louver Slits
+  for (let i = 0; i < 6; i++) {
+    const ly = 178 + i * 20;
+    ctx.fillStyle = '#090d14';
+    ctx.fillRect(46, ly, 420, 10);
+    ctx.fillStyle = '#293548';
+    ctx.fillRect(46, ly + 10, 420, 2);
+  }
+
+  // Central Closed-Door Specification & Carrier Status Plate
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(36, 326, 440, 206);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(36, 326, 440, 206);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('ÇİFT YEDEKLİ TAŞIYICI OMURGA', 56, 362);
+
+  // Path A & Path B Carrier Badges
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(56, 384, 192, 74);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(56, 384, 8, 74);
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('ISP-A HATTI', 76, 414);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '14px monospace';
+  ctx.fillText('OS2 · 144 CORE', 76, 442);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(264, 384, 192, 74);
+  ctx.fillStyle = '#22d3ee';
+  ctx.fillRect(264, 384, 8, 74);
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('ISP-B HATTI', 284, 414);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '14px monospace';
+  ctx.fillText('OM4/OS2 · 144C', 284, 442);
+
+  // Closed Status Bar
+  ctx.fillStyle = '#14532d';
+  ctx.fillRect(56, 476, 400, 36);
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('DURUM: AKTİF · YERALTI MENHOL BAĞLI', 74, 500);
+
+  // Lower Louver Area (visual match under 3D louver slats)
+  for (let i = 0; i < 6; i++) {
+    const ly = 560 + i * 20;
+    ctx.fillStyle = '#090d14';
+    ctx.fillRect(46, ly, 420, 10);
+    ctx.fillStyle = '#293548';
+    ctx.fillRect(46, ly + 10, 420, 2);
+  }
+
+  // Bottom Safety Warning Stripe
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(32, 694, 448, 38);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText('DİKKAT · OPTİK FİBER HATTI · YETKİSİZ AÇMAYIN', 48, 719);
+
+  return finalizeTexture(canvas, { srgb: true });
+}
+
+
+export function createExitSignTexture(arrow = 'none') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+
+  // ISO 7010 Emergency Exit Green Background
+  ctx.fillStyle = '#15803d';
+  ctx.fillRect(0, 0, 512, 160);
+  ctx.strokeStyle = '#dcfce7';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(6, 6, 500, 148);
+
+  // White running-man / door pictogram block on left
+  ctx.fillStyle = '#f0fdf4';
+  ctx.fillRect(24, 24, 96, 112);
+  ctx.fillStyle = '#15803d';
+  // Door frame silhouette
+  ctx.fillRect(48, 34, 48, 88);
+  ctx.fillStyle = '#f0fdf4';
+  // Running person simplified silhouette
+  ctx.beginPath();
+  ctx.arc(62, 54, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(54, 65, 16, 28);
+  ctx.fillRect(42, 74, 38, 9);
+  ctx.fillRect(48, 90, 10, 24);
+  ctx.fillRect(66, 90, 10, 24);
+
+  // Text "ACİL ÇIKIŞ"
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 44px sans-serif';
+  ctx.fillText('ACİL ÇIKIŞ', 142, 82);
+  ctx.fillStyle = '#bbf7d0';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText('EMERGENCY EXIT', 144, 118);
+
+  if (arrow === 'right' || arrow === 'left' || arrow === 'down') {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 54px sans-serif';
+    const sym = arrow === 'right' ? '→' : arrow === 'left' ? '←' : '↓';
+    ctx.fillText(sym, 434, 98);
+  }
+
+  return finalizeTexture(canvas, { srgb: true });
+}
+
+
+export function createCracHmiEmissiveTexture() {
+  return getCachedTexture('cracHmiEmissive', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Black everywhere else so only the HMI screen and status indicator glow in the dark
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Header status bar accent
+    ctx.fillStyle = '#0ea5e9';
+    ctx.fillRect(28, 28, 10, 44);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(452, 42, 16, 16);
+
+    // Left door HMI Touchscreen Display (matches createCracPanelTexture coordinates)
+    ctx.fillStyle = '#082f49';
+    ctx.fillRect(54, 214, 160, 114);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(54, 214, 160, 114);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 17px monospace';
+    ctx.fillText('ÜFLEME: 18.5°C', 64, 242);
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText('DÖNÜŞ : 31.4°C', 64, 268);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '14px monospace';
+    ctx.fillText('EC FAN: %68 AKTİF', 64, 294);
+    ctx.fillText('VANA  : %74 AÇIK', 64, 316);
+
+    return finalizeTexture(canvas, { srgb: true });
+  });
 }
