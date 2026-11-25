@@ -1003,16 +1003,23 @@ function init() {
     }
   });
 
+  const btnCollapseLabel = btnCollapseDock?.querySelector('.dock-collapse-label');
+  const btnToggleKrokiLabel = btnToggleKroki?.querySelector('.kroki-toggle-label');
+
   btnCollapseDock.addEventListener('click', () => {
     const collapsed = dockWrapper.classList.toggle('dock-collapsed');
     btnCollapseDock.setAttribute('aria-expanded', String(!collapsed));
-    btnCollapseDock.textContent = collapsed ? '▴ Kontrolleri Göster' : '▾ Kontrolleri Gizle';
+    const labelText = collapsed ? '▴ Kontrolleri Göster' : '▾ Kontrolleri Gizle';
+    if (btnCollapseLabel) btnCollapseLabel.textContent = labelText;
+    else btnCollapseDock.textContent = labelText;
   });
 
   btnToggleKroki.addEventListener('click', () => {
     const collapsed = krokiBody.classList.toggle('collapsed');
     btnToggleKroki.setAttribute('aria-expanded', String(!collapsed));
-    btnToggleKroki.textContent = collapsed ? 'Göster' : 'Gizle';
+    const labelText = collapsed ? 'Göster' : 'Gizle';
+    if (btnToggleKrokiLabel) btnToggleKrokiLabel.textContent = labelText;
+    else btnToggleKroki.textContent = labelText;
   });
 
   // Touch D-Pad wiring
@@ -1103,14 +1110,25 @@ function init() {
     },
   });
 
-  // Keyboard shortcuts (R: Roof Cutaway, K: Top-down Kroki, H: Hide Dock, M: Minimap — active in dev mode)
+  // Keyboard shortcuts (T/C/F: Modes, 1..9: Zones, R: Roof, K: Top-down Kroki, H: Hide Dock, M: Minimap)
   window.addEventListener('keydown', (e) => {
     if (!devUiEnabled) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    if (e.code === 'KeyR') btnToggleRoof.click();
-    else if (e.code === 'KeyK') btnToggleBlueprint.click();
-    else if (e.code === 'KeyH') btnCollapseDock.click();
-    else if (e.code === 'KeyM') btnToggleKroki.click();
+    if (e.code === 'KeyT') btnModeTour?.click();
+    else if (e.code === 'KeyC') btnModeOrbit?.click();
+    else if (e.code === 'KeyF') btnModeWalk?.click();
+    else if (e.code === 'KeyR') btnToggleRoof?.click();
+    else if (e.code === 'KeyK') btnToggleBlueprint?.click();
+    else if (e.code === 'KeyH') btnCollapseDock?.click();
+    else if (e.code === 'KeyM') btnToggleKroki?.click();
+    else {
+      const digitMatch = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+      if (digitMatch) {
+        const idx = Number(digitMatch[1]) - 1;
+        presetBtns[idx]?.click();
+      }
+    }
   });
 
   // Resize handler

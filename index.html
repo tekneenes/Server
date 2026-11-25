@@ -83,7 +83,7 @@
         <span class="kroki-title">Kat Krokisi</span>
         <button id="btn-toggle-kroki" type="button" class="kroki-toggle-btn" aria-expanded="true"
           title="Kroki haritasını gizle veya göster (M)">
-          Gizle
+          <span class="kroki-toggle-label">Gizle</span><kbd class="kbd-badge">M</kbd>
         </button>
       </div>
       <div id="kroki-body" class="kroki-body">
@@ -152,51 +152,53 @@
     <div id="dock-wrapper" class="dock-wrapper">
       <button id="btn-collapse-dock" type="button" class="dock-collapse-tab" aria-expanded="true"
         title="Kontrol panelini gizle / göster (H)">
-        ▾ Kontrolleri Gizle
+        <span class="dock-collapse-label">▾ Kontrolleri Gizle</span><kbd class="kbd-badge">H</kbd>
       </button>
       <nav id="control-dock" class="control-dock" aria-label="Sahne ve Kamera Kontrolleri">
         <div class="dock-group" role="group" aria-label="Gezinme Modu">
           <button id="btn-mode-tour" type="button" class="dock-btn active" data-mode="tour"
-            title="Fotoğraf açısından başlayarak fare tekerleği (scroll) ile rehberli gezi">
-            Rehberli Tur (Scroll)
+            title="Rehberli Tur moduna geç (T)">
+            <span>Rehberli Tur (Scroll)</span><kbd class="kbd-badge">T</kbd>
           </button>
-          <button id="btn-mode-orbit" type="button" class="dock-btn" data-mode="orbit">
-            Serbest Kamera
+          <button id="btn-mode-orbit" type="button" class="dock-btn" data-mode="orbit"
+            title="Serbest Kamera moduna geç (C)">
+            <span>Serbest Kamera</span><kbd class="kbd-badge">C</kbd>
           </button>
-          <button id="btn-mode-walk" type="button" class="dock-btn" data-mode="walk">
-            İçinde Yürü (FPS)
+          <button id="btn-mode-walk" type="button" class="dock-btn" data-mode="walk"
+            title="İçinde Yürü (FPS) moduna geç (F)">
+            <span>İçinde Yürü (FPS)</span><kbd class="kbd-badge">F</kbd>
           </button>
         </div>
 
         <div class="dock-divider" aria-hidden="true"></div>
 
         <div class="dock-group dock-presets" role="group" aria-label="Bölge Geçişleri">
-          <button type="button" class="dock-btn preset-btn active" data-preset="campus">
-            Dış Kampüs
+          <button type="button" class="dock-btn preset-btn active" data-preset="campus" title="Dış Kampüs (1)">
+            <span>Dış Kampüs</span><kbd class="kbd-badge">1</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="chiller">
-            Chiller Sahası
+          <button type="button" class="dock-btn preset-btn" data-preset="chiller" title="Chiller Sahası (2)">
+            <span>Chiller Sahası</span><kbd class="kbd-badge">2</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="generator">
-            Jeneratör &amp; Trafo
+          <button type="button" class="dock-btn preset-btn" data-preset="generator" title="Jeneratör &amp; Trafo (3)">
+            <span>Jeneratör &amp; Trafo</span><kbd class="kbd-badge">3</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="lobby">
-            Giriş Lobisi
+          <button type="button" class="dock-btn preset-btn" data-preset="lobby" title="Giriş Lobisi (4)">
+            <span>Giriş Lobisi</span><kbd class="kbd-badge">4</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="staging">
-            Güvenlik &amp; Staging
+          <button type="button" class="dock-btn preset-btn" data-preset="staging" title="Güvenlik &amp; Staging (5)">
+            <span>Güvenlik &amp; Staging</span><kbd class="kbd-badge">5</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="noc">
-            Kontrol Merkezi
+          <button type="button" class="dock-btn preset-btn" data-preset="noc" title="Kontrol Merkezi (6)">
+            <span>Kontrol Merkezi</span><kbd class="kbd-badge">6</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="server">
-            Sunucu Salonu
+          <button type="button" class="dock-btn preset-btn" data-preset="server" title="Sunucu Salonu (7)">
+            <span>Sunucu Salonu</span><kbd class="kbd-badge">7</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="power">
-            Güç &amp; UPS
+          <button type="button" class="dock-btn preset-btn" data-preset="power" title="Güç &amp; UPS (8)">
+            <span>Güç &amp; UPS</span><kbd class="kbd-badge">8</kbd>
           </button>
-          <button type="button" class="dock-btn preset-btn" data-preset="mech">
-            Soğutma Odası
+          <button type="button" class="dock-btn preset-btn" data-preset="mech" title="Soğutma Odası (9)">
+            <span>Soğutma Odası</span><kbd class="kbd-badge">9</kbd>
           </button>
         </div>
 
@@ -205,11 +207,11 @@
         <div class="dock-group" role="group" aria-label="Görünüm Seçenekleri">
           <button id="btn-toggle-roof" type="button" class="dock-btn" aria-pressed="false"
             title="Çatıyı kaldırarak kroki kesitini görün (R)">
-            Çatı Kesiti
+            <span>Çatı Kesiti</span><kbd class="kbd-badge">R</kbd>
           </button>
           <button id="btn-toggle-blueprint" type="button" class="dock-btn" aria-pressed="false"
             title="Üstten kroki görünümüne geç (K)">
-            Üstten Kroki
+            <span>Üstten Kroki</span><kbd class="kbd-badge">K</kbd>
           </button>
         </div>
       </nav>
