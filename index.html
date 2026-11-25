@@ -36,10 +36,11 @@
       <p class="hero-sub">
         Kullandığımız uygulamaların, sitelerin ve bulut verilerinin 7/24 hiç kesilmeden nasıl çalıştığını binanın içine girerek keşfedin.
       </p>
-      <div class="hero-scroll-cue">
+      <button id="btn-hero-start" type="button" class="hero-scroll-cue"
+        title="İlk durağa ilerle (veya fare tekerleğiyle aşağı kaydırın)">
         <span class="hero-arrow" aria-hidden="true">↓</span>
         <span>Gezmek için aşağı kaydırın</span>
-      </div>
+      </button>
     </section>
 
     <!-- Kaydırmalı Sahne Anlatım Kartı (Sadece sunum/tur modunda aktif sahneye göre konumlanır) -->
@@ -50,11 +51,17 @@
       <div class="story-actions" id="story-actions" hidden></div>
     </aside>
 
-    <!-- Ortam & Etkileşim Sesi Aç/Kapat Düğmesi -->
-    <button id="btn-toggle-audio" type="button" class="audio-toggle-btn" aria-pressed="true"
-      title="Oda ve ekipman ortam seslerini aç / kapat">
-      🔊 Ses Açık
-    </button>
+    <!-- Hızlı Erişim Düğmeleri: Ses + Serbest Keşif / Tura Dön -->
+    <div class="floating-quick-bar" role="group" aria-label="Hızlı Kontroller">
+      <button id="btn-toggle-audio" type="button" class="audio-toggle-btn" aria-pressed="true"
+        title="Oda ve ekipman ortam seslerini aç / kapat">
+        🔊 Ses Açık
+      </button>
+      <button id="btn-toggle-explore" type="button" class="audio-toggle-btn explore-toggle-btn" aria-pressed="false"
+        title="Serbest kamera, FPS yürüme ve 2D kat krokisi kontrollerini aç / tura dön">
+        🧭 Serbest Keşif
+      </button>
+    </div>
 
     <!-- Üst Sol: Minimal Başlık ve Aktif Bölge Göstergesi -->
     <header class="hud-top-left">
@@ -210,13 +217,40 @@
 
     <!-- Yükleme / WebGL Hata Katmanı -->
     <div id="webgl-fallback" class="webgl-fallback" hidden>
-      <div class="fallback-card">
-        <h2>3D Görünüm Başlatılamadı</h2>
-        <p>Tarayıcınızda WebGL desteği kapalı veya bağlam kesildi. Sayfayı yenileyerek tekrar deneyebilirsiniz.</p>
+      <div class="fallback-card" id="fallback-card">
+        <h2 id="fallback-title">3D Görünüm Başlatılamadı</h2>
+        <p id="fallback-desc">Tarayıcınızda WebGL desteği kapalı veya bağlam kesildi. Sayfayı yenileyerek tekrar deneyebilirsiniz.</p>
       </div>
     </div>
   </div>
 
+  <script>
+    (() => {
+      if (window.location.protocol !== 'file:') return;
+      const fallback = document.getElementById('webgl-fallback');
+      const card = document.getElementById('fallback-card');
+      const title = document.getElementById('fallback-title');
+      const desc = document.getElementById('fallback-desc');
+      if (!fallback || !card || !title || !desc) return;
+
+      title.textContent = 'Yerel Sunucu Gerekli';
+      desc.textContent =
+        'Bu proje ES Modülleri kullandığı için doğrudan file:// (çift tıklama) ile tarayıcı güvenliği nedeniyle açılamaz. Proje klasöründe bir yerel sunucu başlatarak açın:';
+
+      const cmd = document.createElement('code');
+      cmd.className = 'fallback-code';
+      cmd.textContent = 'python3 -m http.server 8080';
+
+      const hint = document.createElement('p');
+      hint.className = 'fallback-hint';
+      hint.textContent =
+        'Ardından tarayıcıda http://localhost:8080 adresini açabilir veya VS Code "Live Server" eklentisiyle index.html dosyasını başlatabilirsiniz.';
+
+      card.appendChild(cmd);
+      card.appendChild(hint);
+      fallback.hidden = false;
+    })();
+  </script>
   <script type="module" src="./src/js/main.js"></script>
 </body>
 

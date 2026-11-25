@@ -192,6 +192,7 @@ function init() {
 
   // DOM HUD References
   const heroIntroEl = document.getElementById('hero-intro');
+  const btnHeroStart = document.getElementById('btn-hero-start');
   const storyOverlayEl = document.getElementById('story-overlay');
   const storyBadgeEl = document.getElementById('story-badge');
   const storyTitleEl = document.getElementById('story-title');
@@ -228,6 +229,7 @@ function init() {
   const krokiBody = document.getElementById('kroki-body');
   const krokiCanvas = document.getElementById('kroki-canvas');
   const btnToggleAudio = document.getElementById('btn-toggle-audio');
+  const btnToggleExplore = document.getElementById('btn-toggle-explore');
 
   const audio = createDataCenterAudio();
   const handleFirstUserGesture = () => {
@@ -1027,9 +1029,19 @@ function init() {
   });
 
   // Developer UI Toggle (hidden by default; type `dev` or `dev()` in browser DevTools Console to show/hide controls)
+  function syncExploreToggleBtn() {
+    if (!btnToggleExplore) return;
+    btnToggleExplore.setAttribute('aria-pressed', String(devUiEnabled));
+    btnToggleExplore.textContent = devUiEnabled ? '🎬 Tura Dön' : '🧭 Serbest Keşif';
+    btnToggleExplore.title = devUiEnabled
+      ? 'Sade rehberli tur görünümüne geri dön'
+      : 'Serbest kamera, FPS yürüme ve 2D kat krokisi kontrollerini aç';
+  }
+
   function setDevUi(enabled) {
     devUiEnabled = Boolean(enabled);
     document.body.classList.toggle('dev-ui', devUiEnabled);
+    syncExploreToggleBtn();
     updateHeroIntroState();
     lastBpX = NaN;
     lastBpYaw = NaN;
@@ -1039,6 +1051,30 @@ function init() {
         : '[Veri Merkezi 3D] Geliştirici kontrolleri GİZLENDİ. Açmak için konsola `dev` yazın.'
     );
     return devUiEnabled;
+  }
+
+  if (btnHeroStart) {
+    btnHeroStart.addEventListener('click', () => {
+      audio.unlock();
+      if (nav.getMode() !== 'tour') nav.setMode('tour');
+      nav.setTourProgress(0.032);
+    });
+  }
+
+  if (btnToggleExplore) {
+    syncExploreToggleBtn();
+    btnToggleExplore.addEventListener('click', () => {
+      audio.unlock();
+      if (devUiEnabled) {
+        setDevUi(false);
+        nav.setMode('tour');
+      } else {
+        setDevUi(true);
+        if (nav.getMode() === 'tour') {
+          nav.setMode('orbit');
+        }
+      }
+    });
   }
 
   const devApi = (force) => {
